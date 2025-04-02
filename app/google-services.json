@@ -1,0 +1,76 @@
+{
+  "project_info": {
+    "project_number": "548142307262",
+    "project_id": "medplus-af0c9",
+    "storage_bucket": "medplus-af0c9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:548142307262:android:95a8f8dabd803708800bef",
+        "android_client_info": {
+          "package_name": "com.example.medplus_pharmacy_pannel"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "548142307262-fla9usi789m99nk5huk0t7p28eaodbjh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAi1fr0ocHRX9z7p3yRzJlI4KOBS_f1r_Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "548142307262-fla9usi789m99nk5huk0t7p28eaodbjh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:548142307262:android:068f33cc3bcfe71b800bef",
+        "android_client_info": {
+          "package_name": "com.example.medplusadmin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "548142307262-j3fvfeq6nkggl5d26f9nefq8jg4jug8c.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.medplusadmin",
+            "certificate_hash": "399ccd3c10a6abdbebf5863dd44b0e89f6954049"
+          }
+        },
+        {
+          "client_id": "548142307262-fla9usi789m99nk5huk0t7p28eaodbjh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAi1fr0ocHRX9z7p3yRzJlI4KOBS_f1r_Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "548142307262-fla9usi789m99nk5huk0t7p28eaodbjh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

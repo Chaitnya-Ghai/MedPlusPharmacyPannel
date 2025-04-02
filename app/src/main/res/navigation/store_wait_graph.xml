@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/store_wait_graph.xml"
+    app:startDestination="@id/registerShopScreen">
+
+    <fragment
+        android:id="@+id/registerShopScreen"
+        android:name="com.example.medplus_pharmacy_pannel.registerActivity.RegisterShopScreen"
+        android:label="fragment_register_shop_screen"
+        tools:layout="@layout/fragment_register_shop_screen" >
+        <action
+            android:id="@+id/action_registerShopScreen_to_waitingResponseFragment"
+            app:destination="@id/waitingResponseFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/waitingResponseFragment"
+        android:name="com.example.medplus_pharmacy_pannel.registerActivity.WaitingResponseFragment"
+        android:label="fragment_waiting_response"
+        tools:layout="@layout/fragment_waiting_response" />
+</navigation>

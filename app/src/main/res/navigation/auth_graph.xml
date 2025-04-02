@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/auth_graph.xml"
+    app:startDestination="@id/signUpFragment">
+    <fragment
+        android:id="@+id/signUpFragment"
+        android:name="com.example.medplus_pharmacy_pannel.auth.SignUpFragment"
+        android:label="fragment_sign_up"
+        tools:layout="@layout/fragment_sign_up" >
+        <action
+            android:id="@+id/action_signUpFragment_to_signingFragment"
+            app:destination="@id/signingFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/signingFragment"
+        android:name="com.example.medplus_pharmacy_pannel.auth.SigningFragment"
+        android:label="fragment_signing"
+        tools:layout="@layout/fragment_signing" />
+</navigation>
