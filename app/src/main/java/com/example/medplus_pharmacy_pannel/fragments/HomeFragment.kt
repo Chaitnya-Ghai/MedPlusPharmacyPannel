@@ -5,14 +5,20 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.SearchView
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.viewModels
-import androidx.navigation.fragment.findNavController
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.GridLayoutManager
 import com.example.medplus_pharmacy_pannel.Graph
 import com.example.medplus_pharmacy_pannel.MainActivity
-import com.example.medplus_pharmacy_pannel.R
+import com.example.medplus_pharmacy_pannel.adapters.CategoryAdapter
+import com.example.medplus_pharmacy_pannel.adapters.MedicineAdapter
 import com.example.medplus_pharmacy_pannel.databinding.FragmentHomeBinding
 import com.example.medplus_pharmacy_pannel.viewModels.MainActivityViewModel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import java.util.Locale
 
 private const val ARG_PARAM1 = "param1"
 private const val ARG_PARAM2 = "param2"
@@ -43,6 +49,7 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {

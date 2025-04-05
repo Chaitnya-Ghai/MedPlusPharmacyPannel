@@ -26,6 +26,4 @@ class SharedViewModel(application: Application, private val repo: ShopkeeperRepo
         }
     }
     fun registerShop(shopData:ShopData) = manage { repo.registerShopkeeper(shopData) }
-    fun updateShopData(authId: String, updatedData: Map<String, Any>) = manage { repo.updateShopDetails(authId, updatedData) }
-
 }

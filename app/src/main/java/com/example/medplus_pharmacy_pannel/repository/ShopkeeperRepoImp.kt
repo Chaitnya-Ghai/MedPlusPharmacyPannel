@@ -1,8 +1,12 @@
 package com.example.medplus_pharmacy_pannel.repository
 
 import android.util.Log
+import com.example.medplus_pharmacy_pannel.CategoryModel
+import com.example.medplus_pharmacy_pannel.Constants.Companion.category
+import com.example.medplus_pharmacy_pannel.Constants.Companion.medicine
 import com.example.medplus_pharmacy_pannel.Constants.Companion.pharmacist
 import com.example.medplus_pharmacy_pannel.Graph
+import com.example.medplus_pharmacy_pannel.InventoryItem
 import com.example.medplus_pharmacy_pannel.Medicine
 import com.example.medplus_pharmacy_pannel.ShopData
 import com.google.firebase.firestore.FirebaseFirestore
@@ -45,8 +49,7 @@ class ShopkeeperRepoImp(private val db: FirebaseFirestore = Graph.db) : Shopkeep
 
 
     override fun getMedicinesFlow(): Flow<List<Medicine>> = callbackFlow {
-        val listener = FirebaseFirestore.getInstance()
-            .collection("medicines")
+        val listener = db.collection(medicine)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     close(e)
@@ -58,23 +61,68 @@ class ShopkeeperRepoImp(private val db: FirebaseFirestore = Graph.db) : Shopkeep
         awaitClose { listener.remove() }
     }
 
+    override fun searchMedByName(name: String): Flow<List<Medicine>> = callbackFlow {
+        val listener = db.collection(medicine).orderBy("medicineName")
+            .startAt(name)
+            .endAt(name + "\uf8ff")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val medicines = snapshot?.toObjects(Medicine::class.java) ?: emptyList()
+                trySend(medicines)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override fun getAllCategory(): Flow<List<CategoryModel>> = callbackFlow {
+        val listener = db.collection(category).addSnapshotListener { snapshots, e ->
+            if (e != null) {
+                close(e)
+                return@addSnapshotListener
+            }
+            val categories = snapshots?.toObjects(CategoryModel::class.java) ?: emptyList()
+            trySend(categories).isSuccess
+        }
+        awaitClose { listener.remove() }
+    }
+
     override suspend fun addMedicinesToInventory(
         authId: String,
-        medicines: List<Medicine>
+        newInventoryItems: List<InventoryItem>,
+        medicineIds: List<String>
     ): Boolean {
         return try {
-            val inventoryRef = db.collection(pharmacist).document(authId)
-            // Fetch existing inventory
-            val snapshot = inventoryRef.get().await()
-            val currentInventory = snapshot.toObject(ShopData::class.java)?.inventory ?: emptyList()
-            val updatedInventory = (currentInventory + medicines).distinct() // Merge new medicines with the existing ones
-            // Update Firestore with new inventory
-            inventoryRef.update("inventory", updatedInventory).await()
+            val docRef = db.collection(pharmacist).document(authId)
+
+            // Get existing data
+            val snapshot = docRef.get().await()
+            val shopData = snapshot.toObject(ShopData::class.java)
+
+            val currentInventory = shopData?.inventory ?: emptyList()
+            val currentMedicineIds = shopData?.medicineId ?: emptyList()
+
+            // Merge new items with current, avoiding duplicates by medicineId
+            val updatedInventory = (currentInventory + newInventoryItems).distinctBy { it.medicineId }
+
+            // Add only new IDs (not already present)
+            val updatedMedicineIds = (currentMedicineIds + medicineIds).distinct()
+
+            // Single update to Firestore
+            docRef.update(
+                mapOf(
+                    "inventory" to updatedInventory,
+                    "medicineId" to updatedMedicineIds
+                )
+            ).await()
+
             true
         } catch (e: Exception) {
             false
         }
     }
+
 
 
     override suspend fun getShopkeeperDetails(authId: String): ShopData? {
