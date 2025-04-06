@@ -21,8 +21,6 @@ class MainActivity : AppCompatActivity() {
 
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.host) as NavHostFragment
         findNavController = navHostFragment.navController
-
-        // Handle system bar insets
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -57,7 +55,7 @@ class MainActivity : AppCompatActivity() {
 
         // FAB click: default action to addMedicinesFragment
         binding.fab.setOnClickListener {
-            findNavController.navigate(R.id.action_homeFragment_to_addMedicinesFragment)
+            findNavController.navigate(R.id.action_global_addMedicinesFragment)
         }
 
         // Change FAB dynamically based on destination
@@ -77,7 +75,7 @@ class MainActivity : AppCompatActivity() {
                 else -> {
                     binding.fab.setImageResource(R.drawable.add)
                     binding.fab.setOnClickListener {
-                        findNavController.navigate(R.id.action_homeFragment_to_addMedicinesFragment)
+                        findNavController.navigate(R.id.action_global_addMedicinesFragment)
                     }
                 }
             }

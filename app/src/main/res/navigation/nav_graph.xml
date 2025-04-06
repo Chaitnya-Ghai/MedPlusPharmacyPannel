@@ -5,14 +5,11 @@
     android:id="@+id/nav_graph.xml"
     app:startDestination="@id/homeFragment">
     <action
-        android:id="@+id/action_addMedicinesFragment_to_homeFragment"
+        android:id="@+id/action_global_homeFragment"
         app:destination="@id/homeFragment" />
     <action
-        android:id="@+id/action_homeFragment_to_addMedicinesFragment"
+        android:id="@+id/action_global_addMedicinesFragment"
         app:destination="@id/addMedicinesFragment" />
-    <action
-        android:id="@+id/action_profileFragment_to_homeFragment"
-        app:destination="@id/homeFragment" />
     <action
         android:id="@+id/action_global_profile"
         app:destination="@id/profileFragment" />
@@ -22,7 +19,6 @@
         android:name="com.example.medplus_pharmacy_pannel.fragments.HomeFragment"
         android:label="Home"
         tools:layout="@layout/fragment_home" >
-
     </fragment>
     <fragment
         android:id="@+id/addMedicinesFragment"
