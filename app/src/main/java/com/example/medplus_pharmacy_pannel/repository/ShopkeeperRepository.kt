@@ -12,18 +12,15 @@ interface ShopkeeperRepository {
     suspend fun registerShopkeeper(shopkeeper: ShopData): Boolean
     // Check if the shopkeeper is validated (Real-time Flow) , also check shopkeeper is already registered
     fun validated(authId: String): Flow<Int>
-    // Fetch available medicines from Firestore (Real-time Flow)
-    fun getMedicinesFlow(): Flow<List<Medicine>>
-// fetch medicines by name from Firestore (Real-time Flow)
-    fun searchMedByName(name: String): Flow<List<Medicine>>
-
-    // Fetch all categories from Firestore (Real-time Flow)
-    fun getAllCategory(): Flow<List<CategoryModel>>
-
-    // Add selected medicines to the shopkeeper's inventory (Batch Write)
-    suspend fun addMedicinesToInventory(authId: String, newInventoryItems: List<InventoryItem> , medicineIds : List<String>): Boolean
     // Fetch Shopkeeper Details by Auth ID
     suspend fun getShopkeeperDetails(authId: String): ShopData?
     // Update Shopkeeper Details
     suspend fun updateShopDetails(authId: String, updatedData: Map<String, Any>): Boolean
+    // Fetch all categories from Firestore (Real-time Flow)
+    fun getAllCategory(): Flow<List<CategoryModel>>
+    // Fetch available availableMedicinesToAdd from Firestore (Real-time Flow)
+    fun getMedicinesFlow(): Flow<List<Medicine>>
+    fun observeMedicineIds(authId: String): Flow<List<String>>
+    // Add selected availableMedicinesToAdd to the shopkeeper's inventory (Batch Write)
+    suspend fun addMedicinesToInventory(authId: String, newInventoryItems: List<InventoryItem> , medicineIds : List<String>): Boolean
 }

@@ -15,19 +15,18 @@ import androidx.recyclerview.widget.GridLayoutManager
 import com.example.medplus_pharmacy_pannel.Graph
 import com.example.medplus_pharmacy_pannel.InventoryItem
 import com.example.medplus_pharmacy_pannel.MainActivity
-import com.example.medplus_pharmacy_pannel.MedicineInterface
+import com.example.medplus_pharmacy_pannel.interfaces.MedicineInterface
 import com.example.medplus_pharmacy_pannel.R
 import com.example.medplus_pharmacy_pannel.adapters.MedicineAdapter
 import com.example.medplus_pharmacy_pannel.databinding.FragmentManageMedicinesBinding
 import com.example.medplus_pharmacy_pannel.viewModels.MainActivityViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 private const val ARG_PARAM1 = "param1"
 private const val ARG_PARAM2 = "param2"
 
-class AddMedicinesFragment : Fragment() , MedicineInterface{
+class AddMedicinesFragment : Fragment() , MedicineInterface {
     private var param1: String? = null
     private var param2: String? = null
     private val binding by lazy { FragmentManageMedicinesBinding.inflate(layoutInflater) }
@@ -60,39 +59,33 @@ class AddMedicinesFragment : Fragment() , MedicineInterface{
         binding.medicinesRv.layoutManager= GridLayoutManager(mainActivity,3)
         val medicineAdapter= MedicineAdapter(arrayListOf(),this)
         binding.medicinesRv.adapter=medicineAdapter
-// showing all medicines
+// showing all not selected availableMedicinesToAdd
+
+// Collect filtered availableMedicinesToAdd (real-time + search + exclude inventory)
         lifecycleScope.launch {
-            viewModel.allMedicines.collectLatest { med ->
-                medicineAdapter.apply {
-                    updateList(med)
-                }
+            viewModel.availableMedicinesToAdd.collectLatest { filteredList ->
+                medicineAdapter.updateList(filteredList)
             }
         }
         // Search functionality
         searchBar.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
-                query?.lowercase(Locale.US)?.let { viewModel.updateSearchQuery(it) }
+                query?.let { viewModel.updateSearchQuery(it) }
                 return true
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                newText?.lowercase(Locale.US)?.let { viewModel.updateSearchQuery(it) }
+                newText?.let { viewModel.updateSearchQuery(it) }
                 return true
             }
         })
-        // Observe search results
-        viewModel.searchResultsLiveData.observe(viewLifecycleOwner) { medicines ->
-            medicineAdapter.apply {
-                updateList(medicines)
-            }
-        }
     }
     fun onFabClick() {
         if (addNewItems.isNotEmpty()) {
             Toast.makeText(mainActivity, "added", Toast.LENGTH_SHORT).show()
-            viewModel.addMedicinesToInventory(Graph.auth.uid.toString(), inventoryItems = addNewItems, medicineIds = medicineId)
+            viewModel.addMedicinesToInventory(inventoryItems = addNewItems, medicineIds = medicineId)
         } else {
-            Toast.makeText(mainActivity, "No medicines selected", Toast.LENGTH_SHORT).show()
+            Toast.makeText(mainActivity, "No availableMedicinesToAdd selected", Toast.LENGTH_SHORT).show()
         }
         findNavController().navigate(R.id.homeFragment)
     }

@@ -30,8 +30,6 @@ class ShopkeeperRepoImp(private val db: FirebaseFirestore = Graph.db) : Shopkeep
             false
         }
     }
-
-
     override fun validated(authId: String): Flow<Int> = callbackFlow {
         val listener = db.collection(pharmacist).document(authId)
             .addSnapshotListener { snapshot, e ->
@@ -45,86 +43,6 @@ class ShopkeeperRepoImp(private val db: FirebaseFirestore = Graph.db) : Shopkeep
             }
         awaitClose { listener.remove() }
     }
-
-
-
-    override fun getMedicinesFlow(): Flow<List<Medicine>> = callbackFlow {
-        val listener = db.collection(medicine)
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    close(e)
-                    return@addSnapshotListener
-                }
-                val medicines = snapshot?.toObjects(Medicine::class.java) ?: emptyList()
-                trySend(medicines).isSuccess
-            }
-        awaitClose { listener.remove() }
-    }
-
-    override fun searchMedByName(name: String): Flow<List<Medicine>> = callbackFlow {
-        val listener = db.collection(medicine).orderBy("medicineName")
-            .startAt(name)
-            .endAt(name + "\uf8ff")
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    close(error)
-                    return@addSnapshotListener
-                }
-                val medicines = snapshot?.toObjects(Medicine::class.java) ?: emptyList()
-                trySend(medicines)
-            }
-        awaitClose { listener.remove() }
-    }
-
-    override fun getAllCategory(): Flow<List<CategoryModel>> = callbackFlow {
-        val listener = db.collection(category).addSnapshotListener { snapshots, e ->
-            if (e != null) {
-                close(e)
-                return@addSnapshotListener
-            }
-            val categories = snapshots?.toObjects(CategoryModel::class.java) ?: emptyList()
-            trySend(categories).isSuccess
-        }
-        awaitClose { listener.remove() }
-    }
-
-    override suspend fun addMedicinesToInventory(
-        authId: String,
-        newInventoryItems: List<InventoryItem>,
-        medicineIds: List<String>
-    ): Boolean {
-        return try {
-            val docRef = db.collection(pharmacist).document(authId)
-
-            // Get existing data
-            val snapshot = docRef.get().await()
-            val shopData = snapshot.toObject(ShopData::class.java)
-
-            val currentInventory = shopData?.inventory ?: emptyList()
-            val currentMedicineIds = shopData?.medicineId ?: emptyList()
-
-            // Merge new items with current, avoiding duplicates by medicineId
-            val updatedInventory = (currentInventory + newInventoryItems).distinctBy { it.medicineId }
-
-            // Add only new IDs (not already present)
-            val updatedMedicineIds = (currentMedicineIds + medicineIds).distinct()
-
-            // Single update to Firestore
-            docRef.update(
-                mapOf(
-                    "inventory" to updatedInventory,
-                    "medicineId" to updatedMedicineIds
-                )
-            ).await()
-
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-
-
     override suspend fun getShopkeeperDetails(authId: String): ShopData? {
         return try {
             val document = db.collection(pharmacist)
@@ -141,11 +59,10 @@ class ShopkeeperRepoImp(private val db: FirebaseFirestore = Graph.db) : Shopkeep
             null
         }
     }
-
     override suspend fun updateShopDetails(
         authId: String,
         updatedData: Map<String, Any>)
-    : Boolean =
+            : Boolean =
         suspendCoroutine { continuation ->
             db.collection(pharmacist).document(authId).update(updatedData)
                 .addOnCompleteListener {
@@ -157,5 +74,76 @@ class ShopkeeperRepoImp(private val db: FirebaseFirestore = Graph.db) : Shopkeep
                         )
                     }
                 }
+        }
+
+    //get all categories
+    override fun getAllCategory(): Flow<List<CategoryModel>> = callbackFlow {
+        val listener = db.collection(category).addSnapshotListener { snapshots, e ->
+            if (e != null) {
+                close(e)
+                return@addSnapshotListener
+            }
+            val categories = snapshots?.toObjects(CategoryModel::class.java) ?: emptyList()
+            trySend(categories).isSuccess
+        }
+        awaitClose { listener.remove() }
+    }
+    //    get all availableMedicinesToAdd
+    override fun getMedicinesFlow(): Flow<List<Medicine>> = callbackFlow {
+        val listener = db.collection(medicine)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    close(e)
+                    return@addSnapshotListener
+                }
+                val medicines = snapshot?.toObjects(Medicine::class.java) ?: emptyList()
+                trySend(medicines).isSuccess
+            }
+        awaitClose { listener.remove() }
+    }
+
+// adding items into inventory
+    override suspend fun addMedicinesToInventory(
+        authId: String,
+        newInventoryItems: List<InventoryItem>,
+        medicineIds: List<String>
+    ): Boolean {
+        return try {
+            val docRef = db.collection(pharmacist).document(authId)
+            // Get existing data
+            val snapshot = docRef.get().await()
+            val shopData = snapshot.toObject(ShopData::class.java)
+            val currentInventory = shopData?.inventory ?: emptyList()// Get existing inventory
+            val currentMedicineIds = shopData?.medicineId ?: emptyList()// Get existing medicineIds
+            // Merge new items with current, avoiding duplicates by medicineId
+            val updatedInventory = (currentInventory + newInventoryItems).distinctBy { it.medicineId }
+            // Add only new IDs (not already present)
+            val updatedMedicineIds = (currentMedicineIds + medicineIds).distinct()
+            // update to Firestore
+            docRef.update(
+                mapOf(
+                    "inventory" to updatedInventory,
+                    "medicineId" to updatedMedicineIds
+                )
+            ).await()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+
+    override fun observeMedicineIds(authId: String): Flow<List<String>> = callbackFlow{
+        val docRef = db.collection(pharmacist).document(authId)
+        val listener = docRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            val shopData = snapshot?.toObject(ShopData::class.java)
+            val medicines = shopData?.medicineId ?: emptyList()
+            trySend(medicines).isSuccess
+        }
+        awaitClose { listener.remove() }
     }
 }

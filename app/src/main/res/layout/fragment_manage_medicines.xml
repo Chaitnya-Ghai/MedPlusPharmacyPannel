@@ -16,9 +16,11 @@
         android:text="@string/select_category"
         android:contentDescription="@string/show_bottomsheet"
         android:layout_marginHorizontal="@dimen/_12sdp"
+        android:drawableTint="#7E7C7C"
         android:layout_marginTop="@dimen/_15sdp"
         android:layout_marginBottom="@dimen/_12sdp"
-        app:drawableEndCompat="@drawable/baseline_arrow_drop_down_24" />
+        android:drawablePadding="@dimen/_5sdp"
+        app:drawableStartCompat="@drawable/dashboard" />
     <androidx.recyclerview.widget.RecyclerView
         android:layout_width="match_parent"
         android:layout_height="match_parent"

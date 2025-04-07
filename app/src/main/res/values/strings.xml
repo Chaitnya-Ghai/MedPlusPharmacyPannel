@@ -7,4 +7,8 @@
     <string name="home">Home</string>
     <string name="history">History</string>
     <string name="profile">Profile</string>
+    <string name="price">Price</string>
+    <string name="remove">Remove</string>
+    <string name="rps">rps/-</string>
+    <string name="edit">Edit</string>
 </resources>

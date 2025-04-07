@@ -28,11 +28,16 @@ data class InventoryItem(
     override fun equals(other: Any?): Boolean {
         return (other as? InventoryItem)?.medicineId == this.medicineId
     }
-
     override fun hashCode(): Int {
         return medicineId.hashCode()
     }
 }
+
+data class InventoryDisplayItem(
+    var medicine: Medicine,
+    var shopMedicinePrice: String
+)
+
 data class Medicine(
     var id :String?=null,
     var medicineName :String?=null,

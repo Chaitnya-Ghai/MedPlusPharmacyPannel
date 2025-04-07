@@ -5,7 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.medplus_pharmacy_pannel.Medicine
-import com.example.medplus_pharmacy_pannel.MedicineInterface
+import com.example.medplus_pharmacy_pannel.interfaces.MedicineInterface
 import com.example.medplus_pharmacy_pannel.databinding.MedicineItemBinding
 
 class MedicineAdapter(

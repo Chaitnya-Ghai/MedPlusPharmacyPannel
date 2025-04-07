@@ -1,72 +1,87 @@
 package com.example.medplus_pharmacy_pannel.viewModels
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.medplus_pharmacy_pannel.CategoryModel
+import com.example.medplus_pharmacy_pannel.Graph
+import com.example.medplus_pharmacy_pannel.InventoryDisplayItem
 import com.example.medplus_pharmacy_pannel.InventoryItem
 import com.example.medplus_pharmacy_pannel.Medicine
+import com.example.medplus_pharmacy_pannel.ShopData
 import com.example.medplus_pharmacy_pannel.repository.ShopkeeperRepository
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class MainActivityViewModel(private val repo: ShopkeeperRepository) : ViewModel() {
-    // Expose all medicines from Firebase
-    val allMedicines: StateFlow<List<Medicine>> = repo.getMedicinesFlow()
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            emptyList()
-        )
-
-    val getAllCategory : StateFlow<List<CategoryModel>> = repo.getAllCategory().stateIn(viewModelScope , SharingStarted.WhileSubscribed(5000L) , emptyList())
-    fun getAllMedicinesByCategory(categoryId: String): StateFlow<List<Medicine>> = repo.getMedicinesFlow().stateIn(viewModelScope , SharingStarted.WhileSubscribed(5000L) , emptyList())
-
-    fun getMedicinesInInventory(authId: String): StateFlow<List<Medicine>> = repo.getMedicinesFlow().stateIn(viewModelScope , SharingStarted.WhileSubscribed(5000L) , emptyList())
-
-    // Mutable search query
+    private val authId = Graph.auth.uid.toString()
+    private val _shopData = MutableStateFlow<ShopData?>(null)
+    val shopData: StateFlow<ShopData?> = _shopData
     private val searchQuery = MutableStateFlow("")
+    // Initializing shop data
+    init {
+        viewModelScope.launch {
+            _shopData.value = repo.getShopkeeperDetails(authId)
+        }
+    }
+    // Exposing categories and medicines
+    val getAllCategory: StateFlow<List<CategoryModel>> =
+        repo.getAllCategory().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val allMedicines: StateFlow<List<Medicine>> =
+        repo.getMedicinesFlow().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val medicineIdsFlow: StateFlow<List<String>> =
+        repo.observeMedicineIds(authId).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     fun updateSearchQuery(query: String) {
-        searchQuery.value = query // Update search query from UI
+        searchQuery.value = query
     }
 
-    // Search flow: fetches all medicines if query is blank, else searches by query
-    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-    val searchFlow: StateFlow<List<Medicine>> = searchQuery
-        .debounce(300)  //Waits for 300ms before firing request (to avoid extra calls while typing).
-        .distinctUntilChanged()// Avoid sending the same query multiple times if user types the same thing.
-        .flatMapLatest { query -> //new query aye to purani search cancel.
-            if (query.isBlank()) {
-                repo.getMedicinesFlow() // Show all medicines on empty search
-            } else {
-                repo.searchMedByName(query)
-                    .catch { emit(emptyList()) }
-            }
+    // Medicines NOT in inventory and matching query
+//    get real-time + filtered list
+    val availableMedicinesToAdd: StateFlow<List<Medicine>> = combine(allMedicines, medicineIdsFlow, searchQuery) { allMeds, inventoryIds, query ->
+        val inventorySet = inventoryIds.toSet()
+        allMeds.filter { it.id !in inventorySet && it.medicineName?.contains(query, true) == true }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Display inventory items with their shop prices
+    val inventoryDisplayList: StateFlow<List<InventoryDisplayItem>> = combine(
+        allMedicines,
+        shopData,
+        searchQuery
+    ) { allMeds, shopData, query ->
+        val inventoryItems = shopData?.inventory.orEmpty()
+        inventoryItems.mapNotNull { inventoryItem ->
+            val medicine = allMeds.find { it.id == inventoryItem.medicineId }
+            if (medicine?.medicineName?.contains(query, ignoreCase = true) == true) {
+                InventoryDisplayItem(medicine, inventoryItem.shopMedicinePrice)
+            } else null
         }
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            emptyList()
-        )
-    val searchResultsLiveData = searchFlow.asLiveData()// Expose search results to XML-based UI
+
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Reusable task runner
-    private fun manageTask(action: suspend () -> Unit)= viewModelScope.launch { action() }
-    fun addMedicinesToInventory(id: String, inventoryItems: List<InventoryItem> , medicineIds: List<String>) =
-        manageTask { repo.addMedicinesToInventory(authId = id, inventoryItems , medicineIds ) }
-    fun updateShopDetails(authId: String, updatedData: Map<String, Any>) =
+    private fun manageTask(action: suspend () -> Unit) = viewModelScope.launch { action() }
+    fun addMedicinesToInventory(inventoryItems: List<InventoryItem>, medicineIds: List<String>) = manageTask { repo.addMedicinesToInventory(authId, inventoryItems, medicineIds) }
+    fun updateShopDetails(updatedData: Map<String, Any>) =
         manageTask { repo.updateShopDetails(authId, updatedData) }
-    fun getShopkeeperDetails(authId: String) =
-        manageTask { repo.getShopkeeperDetails(authId) }
+
+
+
+    fun updateMedicinePrice(medicineId: String, newPrice: String) {
+        viewModelScope.launch {
+            val currentShopData = shopData.value ?: return@launch
+            val updatedInventory = currentShopData.inventory.map {
+                if (it.medicineId == medicineId) it.copy(shopMedicinePrice = newPrice) else it
+            }
+            val updatedData = mapOf("inventory" to updatedInventory)
+            updateShopDetails(updatedData)
+        }
+    }
+
     //  Add order-related functions (pending, history)
 }
 
@@ -74,7 +89,7 @@ class MainActivityViewModel(private val repo: ShopkeeperRepository) : ViewModel(
 
 
 //categoryId?.let {
-//            db.collection(medicines)
+//            db.collection(availableMedicinesToAdd)
 //                .whereArrayContains("belongingCategory", it)
 //                .get()
 //                .addOnSuccessListener { snapshot ->

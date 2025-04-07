@@ -36,17 +36,13 @@ class MainActivity : AppCompatActivity() {
                 when (item.itemId) {
                     R.id.home -> {
                         binding.fab.setImageResource(R.drawable.add)
-                        binding.fab.setOnClickListener {
                             findNavController.navigate(R.id.homeFragment)
-                        }
                     }
 
                     R.id.profile -> {
                         binding.fab.setImageResource(R.drawable.add)
-                        binding.fab.setOnClickListener {
                             // Using global action
                             findNavController.navigate(R.id.action_global_profile)
-                        }
                     }
                 }
                 true
