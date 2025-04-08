@@ -2,6 +2,7 @@ package com.example.medplus_pharmacy_pannel.fragments
 
 import android.app.AlertDialog
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -10,7 +11,9 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.medplus_pharmacy_pannel.Graph
 import com.example.medplus_pharmacy_pannel.MainActivity
@@ -42,13 +45,14 @@ class HomeFragment : Fragment(), InventoryMedicineInterface {
         binding.inventoryRv.layoutManager = LinearLayoutManager(mainActivity)
         binding.inventoryRv.adapter = adapter
 
-        // Collect inventoryDisplayList once
-        lifecycleScope.launch {
-            viewModel.inventoryDisplayList.collectLatest {
-                adapter.updateData(it)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.inventoryDisplayList.collectLatest {
+                    Log.d("InventorySize", "Size: ${it.size}")
+                    adapter.updateData(it)
+                }
             }
         }
-
         // Handle back button to exit the app
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -71,12 +75,17 @@ class HomeFragment : Fragment(), InventoryMedicineInterface {
                     val success = viewModel.updateMedicinePrice(medicineId, newPrice)
                     if (success) {
                         binding.pg.visibility = View.GONE
+                        adapter.medicinePriceChanged(medicineId, newPrice)
+                        Toast.makeText(
+                            mainActivity,
+                            "price updated \n to ${newPrice}",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     } else {
                         binding.pg.visibility = View.GONE
                         Toast.makeText(mainActivity, "not Updated", Toast.LENGTH_SHORT).show()
                     }
                 }
-
             }
             setNegativeButton("Cancel", null)
         }.show()
@@ -90,6 +99,7 @@ class HomeFragment : Fragment(), InventoryMedicineInterface {
                     val success = viewModel.deleteItemFromInventory(medicineId)
                     if (success) {
                         Toast.makeText(mainActivity, "Medicine removed from inventory", Toast.LENGTH_SHORT).show()
+                        adapter.removeItemById(medicineId)
                     } else {
                         Toast.makeText(mainActivity, "Failed to remove medicine", Toast.LENGTH_SHORT).show()
                     }

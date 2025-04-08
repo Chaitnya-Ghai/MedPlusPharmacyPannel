@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -36,16 +37,17 @@ class MainActivityViewModel(private val repo: ShopkeeperRepository) : ViewModel(
         val updatedInventory = currentShopData.inventory.filter { it.medicineId != medicineId }
         val updatedMedicineIds = currentShopData.medicineId.filter { it != medicineId }
         val updatedData = mapOf("inventory" to updatedInventory, "medicineId" to updatedMedicineIds)
+
         return if (updateShopDetails(updatedData)) {
-            // Re-fetch using Flow and collect the latest data
-            repo.getShopkeeperDetails(authId).collect { updatedShopData ->
-                _shopData.value = updatedShopData
-            }
+            // Optional: re-fetch the latest data only once
+            val updatedShopData = repo.getShopkeeperDetails(authId).first()
+            _shopData.value = updatedShopData
             true
         } else {
             false
         }
     }
+
 
     // Exposing categories and medicines
     val getAllCategory: StateFlow<List<CategoryModel>> =

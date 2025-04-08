@@ -28,7 +28,6 @@ class InventoryAdapter(
             tvMedicineName.text = item.medicine.medicineName
             tvPrice.text = item.shopMedicinePrice
             Glide.with(holder.itemView.context).load(item.medicine.medicineImg).into(image)
-
             tvEdit.setOnClickListener {
                 listener.edit(item.medicine.id.orEmpty(), item.medicine.medicineName.orEmpty(), item.shopMedicinePrice)
             }
@@ -37,11 +36,25 @@ class InventoryAdapter(
             }
         }
     }
-
     fun updateData(newList: List<InventoryDisplayItem>) {
         list.clear()
         list.addAll(newList)
         notifyDataSetChanged()
+    }
+    fun medicinePriceChanged(medicineId: String, newPrice: String) {
+        val index = list.indexOfFirst { it.medicine.id == medicineId }
+        if (index != -1) {
+            list[index].shopMedicinePrice = newPrice
+            notifyItemChanged(index)
+        }
+    }
+    fun removeItemById(id: String) {
+        val index = list.indexOfFirst { it.medicine.id == id }
+        if (index != -1) {
+            list.removeAt(index)
+            notifyItemRemoved(index)
+        }
+
     }
 
 }
