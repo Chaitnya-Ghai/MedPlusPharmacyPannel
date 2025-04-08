@@ -12,21 +12,41 @@ import com.example.medplus_pharmacy_pannel.repository.ShopkeeperRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class MainActivityViewModel(private val repo: ShopkeeperRepository) : ViewModel() {
     private val authId = Graph.auth.uid.toString()
     private val _shopData = MutableStateFlow<ShopData?>(null)
-    val shopData: StateFlow<ShopData?> = _shopData
+    private val shopData: StateFlow<ShopData?> = _shopData
     private val searchQuery = MutableStateFlow("")
     // Initializing shop data
     init {
         viewModelScope.launch {
-            _shopData.value = repo.getShopkeeperDetails(authId)
+            repo.getShopkeeperDetails(authId).collectLatest {
+                _shopData.value = it
+            }
         }
     }
+    suspend fun deleteItemFromInventory(medicineId: String): Boolean {
+        val currentShopData = shopData.value ?: return false
+        val updatedInventory = currentShopData.inventory.filter { it.medicineId != medicineId }
+        val updatedMedicineIds = currentShopData.medicineId.filter { it != medicineId }
+        val updatedData = mapOf("inventory" to updatedInventory, "medicineId" to updatedMedicineIds)
+        return if (updateShopDetails(updatedData)) {
+            // Re-fetch using Flow and collect the latest data
+            repo.getShopkeeperDetails(authId).collect { updatedShopData ->
+                _shopData.value = updatedShopData
+            }
+            true
+        } else {
+            false
+        }
+    }
+
     // Exposing categories and medicines
     val getAllCategory: StateFlow<List<CategoryModel>> =
         repo.getAllCategory().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -50,38 +70,41 @@ class MainActivityViewModel(private val repo: ShopkeeperRepository) : ViewModel(
     // Display inventory items with their shop prices
     val inventoryDisplayList: StateFlow<List<InventoryDisplayItem>> = combine(
         allMedicines,
-        shopData,
-        searchQuery
-    ) { allMeds, shopData, query ->
-        val inventoryItems = shopData?.inventory.orEmpty()
-        inventoryItems.mapNotNull { inventoryItem ->
-            val medicine = allMeds.find { it.id == inventoryItem.medicineId }
-            if (medicine?.medicineName?.contains(query, ignoreCase = true) == true) {
+        shopData.map { it?.inventory },
+    ) { allMeds, inventory ->
+        if (!inventory.isNullOrEmpty()){
+            println("InventoryItems: $inventory")
+            inventory.map { inventoryItem ->
+                val medicine = allMeds.find { it.id == inventoryItem.medicineId } ?: Medicine()
                 InventoryDisplayItem(medicine, inventoryItem.shopMedicinePrice)
-            } else null
+            }
+        }else{
+            emptyList()
         }
-
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Reusable task runner
-    private fun manageTask(action: suspend () -> Unit) = viewModelScope.launch { action() }
-    fun addMedicinesToInventory(inventoryItems: List<InventoryItem>, medicineIds: List<String>) = manageTask { repo.addMedicinesToInventory(authId, inventoryItems, medicineIds) }
-    fun updateShopDetails(updatedData: Map<String, Any>) =
-        manageTask { repo.updateShopDetails(authId, updatedData) }
-
-
-
-    fun updateMedicinePrice(medicineId: String, newPrice: String) {
-        viewModelScope.launch {
-            val currentShopData = shopData.value ?: return@launch
-            val updatedInventory = currentShopData.inventory.map {
-                if (it.medicineId == medicineId) it.copy(shopMedicinePrice = newPrice) else it
-            }
-            val updatedData = mapOf("inventory" to updatedInventory)
-            updateShopDetails(updatedData)
-        }
+    suspend fun addMedicinesToInventory(
+        inventoryItems: List<InventoryItem>,
+        medicineIds: List<String>
+    ): Boolean {
+        return repo.addMedicinesToInventory(authId, inventoryItems, medicineIds)
     }
+    suspend fun updateShopDetails(updatedData: Map<String, Any>) :Boolean{ return repo.updateShopDetails(authId, updatedData) }
 
+
+    suspend fun updateMedicinePrice(medicineId: String, newPrice: String): Boolean {
+        val currentShopData = shopData.value ?: return false
+        val updatedInventory = currentShopData.inventory.map {
+            if (it.medicineId == medicineId) it.copy(shopMedicinePrice = newPrice) else it
+        }
+        val updatedData = mapOf("inventory" to updatedInventory)
+        if (updateShopDetails(updatedData)) {
+            // Optional but helpful for fast UI sync (even before listener triggers)
+            _shopData.value = currentShopData.copy(inventory = updatedInventory)
+            return true
+        }
+        return false
+    }
     //  Add order-related functions (pending, history)
 }
 

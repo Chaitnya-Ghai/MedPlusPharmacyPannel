@@ -82,19 +82,26 @@ class AddMedicinesFragment : Fragment() , MedicineInterface {
     }
     fun onFabClick() {
         if (addNewItems.isNotEmpty()) {
-            Toast.makeText(mainActivity, "added", Toast.LENGTH_SHORT).show()
-            viewModel.addMedicinesToInventory(inventoryItems = addNewItems, medicineIds = medicineId)
+            lifecycleScope.launch {
+                val success = viewModel.addMedicinesToInventory(addNewItems, medicineId)
+                if (success) {
+                    Toast.makeText(mainActivity, "Items added successfully", Toast.LENGTH_SHORT).show()
+                    findNavController().navigate(R.id.homeFragment)
+                } else {
+                    Toast.makeText(mainActivity, "Failed to add items", Toast.LENGTH_SHORT).show()
+                }
+            }
         } else {
             Toast.makeText(mainActivity, "No availableMedicinesToAdd selected", Toast.LENGTH_SHORT).show()
         }
-        findNavController().navigate(R.id.homeFragment)
     }
+
     override fun tick(id: String, name: String, price: String) {
         val info = InventoryItem(id, name, price)
         if (!addNewItems.contains(info)) {
             addNewItems.add(info)
             medicineId.add(id)
-            Log.e("DEBUG", "tick: ${addNewItems}", )
+            Log.e("DEBUG", "tick: ${addNewItems}")
             Toast.makeText(mainActivity, "added", Toast.LENGTH_SHORT).show()
         }
     }
@@ -104,5 +111,5 @@ class AddMedicinesFragment : Fragment() , MedicineInterface {
             medicineId.remove(id)
         Toast.makeText(mainActivity, "removed", Toast.LENGTH_SHORT).show()
         }
-    }
+}
 

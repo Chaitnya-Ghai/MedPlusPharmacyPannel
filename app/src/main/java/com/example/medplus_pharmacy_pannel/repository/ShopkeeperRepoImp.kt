@@ -43,22 +43,24 @@ class ShopkeeperRepoImp(private val db: FirebaseFirestore = Graph.db) : Shopkeep
             }
         awaitClose { listener.remove() }
     }
-    override suspend fun getShopkeeperDetails(authId: String): ShopData? {
-        return try {
-            val document = db.collection(pharmacist)
-                .document(authId)
-                .get()
-                .await()
-            if (document.exists()) {
-                document.toObject(ShopData::class.java)
-            } else {
-                null
+    override fun getShopkeeperDetails(authId: String): Flow<ShopData?> = callbackFlow {
+        val docRef = db.collection(pharmacist).document(authId)
+        val registration = docRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Log.e("Firestore", "Error: ${error.message}", error)
+                trySend(null)
+                return@addSnapshotListener
             }
-        }catch (e:Exception){
-            Log.e("Firestore", "Error fetching shopkeeper details: ${e.message}", e)
-            null
+
+            if (snapshot != null && snapshot.exists()) {
+                trySend(snapshot.toObject(ShopData::class.java))
+            } else {
+                trySend(null)
+            }
         }
+        awaitClose { registration.remove() }
     }
+
     override suspend fun updateShopDetails(
         authId: String,
         updatedData: Map<String, Any>)
@@ -75,7 +77,6 @@ class ShopkeeperRepoImp(private val db: FirebaseFirestore = Graph.db) : Shopkeep
                     }
                 }
         }
-
     //get all categories
     override fun getAllCategory(): Flow<List<CategoryModel>> = callbackFlow {
         val listener = db.collection(category).addSnapshotListener { snapshots, e ->

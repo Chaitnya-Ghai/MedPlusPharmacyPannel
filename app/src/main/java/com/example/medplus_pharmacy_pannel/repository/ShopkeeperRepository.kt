@@ -13,7 +13,7 @@ interface ShopkeeperRepository {
     // Check if the shopkeeper is validated (Real-time Flow) , also check shopkeeper is already registered
     fun validated(authId: String): Flow<Int>
     // Fetch Shopkeeper Details by Auth ID
-    suspend fun getShopkeeperDetails(authId: String): ShopData?
+    fun getShopkeeperDetails(authId: String): Flow<ShopData?>
     // Update Shopkeeper Details
     suspend fun updateShopDetails(authId: String, updatedData: Map<String, Any>): Boolean
     // Fetch all categories from Firestore (Real-time Flow)

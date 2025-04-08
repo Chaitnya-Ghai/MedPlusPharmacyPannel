@@ -8,25 +8,34 @@ import com.example.medplus_pharmacy_pannel.InventoryDisplayItem
 import com.example.medplus_pharmacy_pannel.databinding.InventoryItemBinding
 import com.example.medplus_pharmacy_pannel.interfaces.InventoryMedicineInterface
 
-class InventoryAdapter(val list: ArrayList<InventoryDisplayItem> , val listener: InventoryMedicineInterface) : RecyclerView.Adapter<InventoryAdapter.ViewHolder>() {
+class InventoryAdapter(
+    private val list: ArrayList<InventoryDisplayItem>,
+    private val listener: InventoryMedicineInterface
+) : RecyclerView.Adapter<InventoryAdapter.ViewHolder>() {
+
     class ViewHolder(val binding: InventoryItemBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val view = InventoryItemBinding.inflate(LayoutInflater.from(parent.context) , parent , false)
-        return ViewHolder(view)
+        val binding = InventoryItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return ViewHolder(binding)
     }
 
-    override fun getItemCount(): Int {
-        return list.size
-    }
+    override fun getItemCount(): Int = list.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.binding.tvPrice.text = list[position].shopMedicinePrice
-        holder.binding.tvEdit.setOnClickListener {
-            listener.edit(list[position].medicine.id.toString() , list[position].medicine.medicineName.toString() , list[position].shopMedicinePrice)
+        val item = list[position]
+        holder.binding.apply {
+            tvMedicineName.text = item.medicine.medicineName
+            tvPrice.text = item.shopMedicinePrice
+            Glide.with(holder.itemView.context).load(item.medicine.medicineImg).into(image)
+
+            tvEdit.setOnClickListener {
+                listener.edit(item.medicine.id.orEmpty(), item.medicine.medicineName.orEmpty(), item.shopMedicinePrice)
+            }
+            tvRemove.setOnClickListener {
+                listener.removeFromInventory(item.medicine.id.orEmpty())
+            }
         }
-        holder.binding.tvMedicineName.text = list[position].medicine.medicineName
-        Glide.with(holder.itemView.context).load(list[position].medicine.medicineImg).into(holder.binding.image)
     }
 
     fun updateData(newList: List<InventoryDisplayItem>) {
@@ -34,4 +43,5 @@ class InventoryAdapter(val list: ArrayList<InventoryDisplayItem> , val listener:
         list.addAll(newList)
         notifyDataSetChanged()
     }
+
 }

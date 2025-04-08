@@ -6,6 +6,8 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -22,70 +24,79 @@ import kotlinx.coroutines.launch
 private const val ARG_PARAM1 = "param1"
 private const val ARG_PARAM2 = "param2"
 
-class HomeFragment : Fragment() , InventoryMedicineInterface {
-    private var param1: String? = null
-    private var param2: String? = null
+class HomeFragment : Fragment(), InventoryMedicineInterface {
     private val binding by lazy { FragmentHomeBinding.inflate(layoutInflater) }
     private val mainActivity by lazy { activity as MainActivity }
-    private val viewModel : MainActivityViewModel by viewModels{
+    private val adapter = InventoryAdapter(arrayListOf(), this)
+    private val viewModel: MainActivityViewModel by viewModels {
         Graph.MainActivityViewModelFactory(Graph.repo)
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
-        }
-    }
-
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View{
-        return binding.root
-    }
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View = binding.root
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.inventoryRv.layoutManager=LinearLayoutManager(mainActivity)
-        val adapter = InventoryAdapter(arrayListOf(),this)
-        binding.inventoryRv.adapter= adapter
+        binding.inventoryRv.layoutManager = LinearLayoutManager(mainActivity)
+        binding.inventoryRv.adapter = adapter
 
+        // Collect inventoryDisplayList once
         lifecycleScope.launch {
             viewModel.inventoryDisplayList.collectLatest {
                 adapter.updateData(it)
             }
         }
+
+        // Handle back button to exit the app
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                requireActivity().finishAffinity() // Exits the app completely
+                requireActivity().finishAffinity()
             }
         })
     }
 
     override fun edit(medicineId: String, medicineName: String, medicinePrice: String) {
         AlertDialog.Builder(mainActivity).apply {
-            setTitle("Edit Medicine Price")
-            val input = android.widget.EditText(mainActivity)
-            input.setText(medicinePrice)
+            setTitle("Enter new price for $medicineName")
+            val input = EditText(mainActivity).apply {
+                setText(medicinePrice)
+            }
             setView(input)
             setPositiveButton("Save") { _, _ ->
+                binding.pg.visibility = View.VISIBLE
                 val newPrice = input.text.toString()
                 lifecycleScope.launch {
-                    viewModel.updateMedicinePrice(medicineId = medicineId ,newPrice)//change in firestore inventory 
+                    val success = viewModel.updateMedicinePrice(medicineId, newPrice)
+                    if (success) {
+                        binding.pg.visibility = View.GONE
+                    } else {
+                        binding.pg.visibility = View.GONE
+                        Toast.makeText(mainActivity, "not Updated", Toast.LENGTH_SHORT).show()
+                    }
                 }
+
             }
             setNegativeButton("Cancel", null)
         }.show()
     }
 
-    override fun removeFromInventory(
-        medicineId: String,
-        medicineName: String,
-        medicinePrice: String
-    ) {
-        lifecycleScope.launch {}
+    override fun removeFromInventory(medicineId: String) {
+        AlertDialog.Builder(mainActivity).apply {
+            setTitle("Are you sure you want to remove this medicine?")
+            setPositiveButton("Yes") { _, _ ->
+                lifecycleScope.launch {
+                    val success = viewModel.deleteItemFromInventory(medicineId)
+                    if (success) {
+                        Toast.makeText(mainActivity, "Medicine removed from inventory", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(mainActivity, "Failed to remove medicine", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            setNegativeButton("No", null)
+            setCancelable(true)
+        }.show()
     }
 }
