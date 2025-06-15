@@ -9,15 +9,16 @@ import com.example.medplus_pharmacy_pannel.InventoryItem
 import com.example.medplus_pharmacy_pannel.Medicine
 import com.example.medplus_pharmacy_pannel.ShopData
 import com.example.medplus_pharmacy_pannel.repository.ShopkeeperRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivityViewModel(private val repo: ShopkeeperRepository) : ViewModel() {
     private val authId = Graph.auth.uid.toString()
@@ -33,37 +34,28 @@ class MainActivityViewModel(private val repo: ShopkeeperRepository) : ViewModel(
         }
     }
     suspend fun deleteItemFromInventory(medicineId: String): Boolean {
-        val currentShopData = shopData.value ?: return false
-        val updatedInventory = currentShopData.inventory.filter { it.medicineId != medicineId }
-        val updatedMedicineIds = currentShopData.medicineId.filter { it != medicineId }
-        val updatedData = mapOf("inventory" to updatedInventory, "medicineId" to updatedMedicineIds)
-
-        return if (updateShopDetails(updatedData)) {
-            // Optional: re-fetch the latest data only once
-            val updatedShopData = repo.getShopkeeperDetails(authId).first()
-            _shopData.value = updatedShopData
-            true
-        } else {
-            false
-        }
+       return repo.deleteItemFromInventory(authId, medicineId)
     }
 
 
     // Exposing categories and medicines
     val getAllCategory: StateFlow<List<CategoryModel>> =
         repo.getAllCategory().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val allMedicines: StateFlow<List<Medicine>> =
         repo.getMedicinesFlow().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val medicineIdsFlow: StateFlow<List<String>> =
         repo.observeMedicineIds(authId).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
+// cold flow , hot flow
+//
     fun updateSearchQuery(query: String) {
         searchQuery.value = query
     }
 
     // Medicines NOT in inventory and matching query
 //    get real-time + filtered list
+
     val availableMedicinesToAdd: StateFlow<List<Medicine>> = combine(allMedicines, medicineIdsFlow, searchQuery) { allMeds, inventoryIds, query ->
         val inventorySet = inventoryIds.toSet()
         allMeds.filter { it.id !in inventorySet && it.medicineName?.contains(query, true) == true }
@@ -74,16 +66,24 @@ class MainActivityViewModel(private val repo: ShopkeeperRepository) : ViewModel(
         allMedicines,
         shopData.map { it?.inventory },
     ) { allMeds, inventory ->
-        if (!inventory.isNullOrEmpty()){
-            println("InventoryItems: $inventory")
-            inventory.map { inventoryItem ->
-                val medicine = allMeds.find { it.id == inventoryItem.medicineId } ?: Medicine()
-                InventoryDisplayItem(medicine, inventoryItem.shopMedicinePrice)
+        allMeds to inventory
+    }.map { (allMeds, inventory) ->
+        withContext(Dispatchers.IO) {
+            if (!inventory.isNullOrEmpty()) {
+                println("InventoryItems: $inventory")
+                inventory.map { inventoryItem ->
+                    val medicine = allMeds.find { it.id == inventoryItem.medicineId } ?: Medicine()
+                    InventoryDisplayItem(medicine, inventoryItem.shopMedicinePrice)
+                }
+            } else {
+                emptyList()
             }
-        }else{
-            emptyList()
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     suspend fun addMedicinesToInventory(
         inventoryItems: List<InventoryItem>,
@@ -92,7 +92,6 @@ class MainActivityViewModel(private val repo: ShopkeeperRepository) : ViewModel(
         return repo.addMedicinesToInventory(authId, inventoryItems, medicineIds)
     }
     suspend fun updateShopDetails(updatedData: Map<String, Any>) :Boolean{ return repo.updateShopDetails(authId, updatedData) }
-
 
     suspend fun updateMedicinePrice(medicineId: String, newPrice: String): Boolean {
         val currentShopData = shopData.value ?: return false

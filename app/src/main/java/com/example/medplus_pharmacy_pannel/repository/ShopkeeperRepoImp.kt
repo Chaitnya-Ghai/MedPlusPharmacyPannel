@@ -10,10 +10,12 @@ import com.example.medplus_pharmacy_pannel.InventoryItem
 import com.example.medplus_pharmacy_pannel.Medicine
 import com.example.medplus_pharmacy_pannel.ShopData
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -60,6 +62,7 @@ class ShopkeeperRepoImp(private val db: FirebaseFirestore = Graph.db) : Shopkeep
         }
         awaitClose { registration.remove() }
     }
+
 
     override suspend fun updateShopDetails(
         authId: String,
@@ -133,6 +136,28 @@ class ShopkeeperRepoImp(private val db: FirebaseFirestore = Graph.db) : Shopkeep
         }
     }
 
+    override suspend fun deleteItemFromInventory(authId: String, medicineId: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val docRef = db.collection(pharmacist).document(authId)
+            val snapshot = docRef.get().await()
+            val shopData = snapshot.toObject(ShopData::class.java)
+
+            val updatedInventory = shopData?.inventory?.filterNot { it.medicineId == medicineId } ?: emptyList()
+            val updatedMedicineIds = shopData?.medicineId?.filterNot { it == medicineId } ?: emptyList()
+
+            val updatedData = mapOf(
+                "inventory" to updatedInventory,
+                "medicineId" to updatedMedicineIds
+            )
+            docRef.update(updatedData).await()
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+
 
     override fun observeMedicineIds(authId: String): Flow<List<String>> = callbackFlow{
         val docRef = db.collection(pharmacist).document(authId)
@@ -147,4 +172,12 @@ class ShopkeeperRepoImp(private val db: FirebaseFirestore = Graph.db) : Shopkeep
         }
         awaitClose { listener.remove() }
     }
+
+
+
+
 }
+
+
+
+

@@ -23,4 +23,5 @@ interface ShopkeeperRepository {
     fun observeMedicineIds(authId: String): Flow<List<String>>
     // Add selected availableMedicinesToAdd to the shopkeeper's inventory (Batch Write)
     suspend fun addMedicinesToInventory(authId: String, newInventoryItems: List<InventoryItem> , medicineIds : List<String>): Boolean
+    suspend fun deleteItemFromInventory(authId: String, medicineId: String): Boolean
 }

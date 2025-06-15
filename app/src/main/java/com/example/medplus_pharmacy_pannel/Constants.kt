@@ -4,6 +4,6 @@ class Constants {
     companion object{
         const val medicine="medicines"
         const val category="category"
-        val pharmacist = "Pharmacist"
+        const val pharmacist = "Pharmacist"
     }
 }

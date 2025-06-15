@@ -19,6 +19,23 @@ data class ShopData(
         return authId.hashCode()
     }
 }
+data class Order(
+    val orderId: String = "",
+    val customerId: String = "", // Firebase UID of user who placed order
+    val customerName: String = "",
+    val deliveryAddress: String = "",
+    val orderTime: Long = System.currentTimeMillis(), // Store as timestamp
+    val totalAmount: Double = 0.0,
+    val status: String = "pending", // "pending", "shipped", "delivered", "cancelled"
+    val items: List<OrderedMedicine> = emptyList()
+)
+data class OrderedMedicine(
+    val medicineId: String = "",
+    val medicineName: String = "",
+    val quantity: Int = 0,
+    val pricePerUnit: Double = 0.0
+)
+
 
 data class InventoryItem(
     var medicineId: String = "",

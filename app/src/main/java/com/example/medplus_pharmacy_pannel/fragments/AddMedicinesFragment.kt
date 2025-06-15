@@ -21,6 +21,7 @@ import com.example.medplus_pharmacy_pannel.adapters.MedicineAdapter
 import com.example.medplus_pharmacy_pannel.databinding.FragmentManageMedicinesBinding
 import com.example.medplus_pharmacy_pannel.viewModels.MainActivityViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 
 private const val ARG_PARAM1 = "param1"
@@ -60,7 +61,6 @@ class AddMedicinesFragment : Fragment() , MedicineInterface {
         val medicineAdapter= MedicineAdapter(arrayListOf(),this)
         binding.medicinesRv.adapter=medicineAdapter
 // showing all not selected availableMedicinesToAdd
-
 // Collect filtered availableMedicinesToAdd (real-time + search + exclude inventory)
         lifecycleScope.launch {
             viewModel.availableMedicinesToAdd.collectLatest { filteredList ->
@@ -81,6 +81,12 @@ class AddMedicinesFragment : Fragment() , MedicineInterface {
         })
     }
     fun onFabClick() {
+
+        flow {
+            emit("")
+        }
+
+
         if (addNewItems.isNotEmpty()) {
             lifecycleScope.launch {
                 val success = viewModel.addMedicinesToInventory(addNewItems, medicineId)

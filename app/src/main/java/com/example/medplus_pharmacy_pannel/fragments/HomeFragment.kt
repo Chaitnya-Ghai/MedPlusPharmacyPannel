@@ -2,7 +2,7 @@ package com.example.medplus_pharmacy_pannel.fragments
 
 import android.app.AlertDialog
 import android.os.Bundle
-import android.util.Log
+import android.text.InputType
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -21,11 +21,10 @@ import com.example.medplus_pharmacy_pannel.adapters.InventoryAdapter
 import com.example.medplus_pharmacy_pannel.databinding.FragmentHomeBinding
 import com.example.medplus_pharmacy_pannel.interfaces.InventoryMedicineInterface
 import com.example.medplus_pharmacy_pannel.viewModels.MainActivityViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
+import kotlinx.coroutines.withContext
 
 class HomeFragment : Fragment(), InventoryMedicineInterface {
     private val binding by lazy { FragmentHomeBinding.inflate(layoutInflater) }
@@ -41,14 +40,11 @@ class HomeFragment : Fragment(), InventoryMedicineInterface {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         binding.inventoryRv.layoutManager = LinearLayoutManager(mainActivity)
         binding.inventoryRv.adapter = adapter
-
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.inventoryDisplayList.collectLatest {
-                    Log.d("InventorySize", "Size: ${it.size}")
                     adapter.updateData(it)
                 }
             }
@@ -60,46 +56,50 @@ class HomeFragment : Fragment(), InventoryMedicineInterface {
             }
         })
     }
-
     override fun edit(medicineId: String, medicineName: String, medicinePrice: String) {
+        val input = EditText(mainActivity).apply {
+            setText(medicinePrice)
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+        }
         AlertDialog.Builder(mainActivity).apply {
             setTitle("Enter new price for $medicineName")
-            val input = EditText(mainActivity).apply {
-                setText(medicinePrice)
-            }
             setView(input)
             setPositiveButton("Save") { _, _ ->
-                binding.pg.visibility = View.VISIBLE
                 val newPrice = input.text.toString()
+                if (newPrice.isBlank()) {
+                    Toast.makeText(mainActivity, "Please enter a valid price", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                binding.pg.visibility = View.VISIBLE
                 lifecycleScope.launch {
-                    val success = viewModel.updateMedicinePrice(medicineId, newPrice)
+                    val success = withContext(Dispatchers.IO) {
+                        viewModel.updateMedicinePrice(medicineId, newPrice)
+                    }
+                    binding.pg.visibility = View.GONE
                     if (success) {
-                        binding.pg.visibility = View.GONE
                         adapter.medicinePriceChanged(medicineId, newPrice)
-                        Toast.makeText(
-                            mainActivity,
-                            "price updated \n to ${newPrice}",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast.makeText(mainActivity, "Price updated to ₹$newPrice", Toast.LENGTH_SHORT).show()
                     } else {
-                        binding.pg.visibility = View.GONE
-                        Toast.makeText(mainActivity, "not Updated", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(mainActivity, "Failed to update price", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
             setNegativeButton("Cancel", null)
+            setCancelable(true)
         }.show()
     }
-
     override fun removeFromInventory(medicineId: String) {
         AlertDialog.Builder(mainActivity).apply {
-            setTitle("Are you sure you want to remove this medicine?")
+            setTitle("Remove Medicine")
+            setMessage("Are you sure you want to remove this medicine?")
             setPositiveButton("Yes") { _, _ ->
                 lifecycleScope.launch {
-                    val success = viewModel.deleteItemFromInventory(medicineId)
+                    val success = withContext(Dispatchers.IO) {
+                        viewModel.deleteItemFromInventory(medicineId)
+                    }
                     if (success) {
-                        Toast.makeText(mainActivity, "Medicine removed from inventory", Toast.LENGTH_SHORT).show()
                         adapter.removeItemById(medicineId)
+                        Toast.makeText(mainActivity, "Medicine removed from inventory", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(mainActivity, "Failed to remove medicine", Toast.LENGTH_SHORT).show()
                     }
